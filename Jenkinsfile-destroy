@@ -1,0 +1,61 @@
+pipeline {
+  agent any
+
+  environment {
+    SECURITY_GROUP_NAME = 'treepedia-sg'
+    REGION = 'us-east-1'
+    TAG_KEY = 'Name'
+    TAG_VALUE = 'TreepediaApp'
+  }
+
+  stages {
+    stage('Kaynakları Temizle') {
+      steps {
+        withCredentials([[
+          $class: 'AmazonWebServicesCredentialsBinding',
+          credentialsId: 'aws-creds'
+        ]]) {
+          sh """
+            echo "[🔐] AWS credentials yüklendi."
+
+            echo "[🌐] Default VPC alınıyor..."
+            DEFAULT_VPC_ID=\$(aws ec2 describe-vpcs --region $REGION \
+              --filters Name=isDefault,Values=true \
+              --query 'Vpcs[0].VpcId' --output text)
+
+            echo "🌐 Default VPC: \$DEFAULT_VPC_ID"
+
+            echo "[🧹] Treepedia EC2 instance'ı bulunuyor..."
+            INSTANCE_ID=\$(aws ec2 describe-instances \
+              --region $REGION \
+              --filters "Name=tag:$TAG_KEY,Values=$TAG_VALUE" "Name=instance-state-name,Values=running,pending,stopped" \
+              --query 'Reservations[].Instances[].InstanceId' --output text)
+
+            if [ -n "\$INSTANCE_ID" ]; then
+              echo "[⚠️] EC2 instance \$INSTANCE_ID siliniyor..."
+              aws ec2 terminate-instances --instance-ids \$INSTANCE_ID --region $REGION
+              aws ec2 wait instance-terminated --instance-ids \$INSTANCE_ID --region $REGION
+              echo "[✅] EC2 instance başarıyla silindi."
+            else
+              echo "[ℹ️] Silinecek aktif EC2 instance bulunamadı."
+            fi
+
+            echo "[🧼] Güvenlik grubu kontrol ediliyor..."
+            SG_ID=\$(aws ec2 describe-security-groups \
+              --region $REGION \
+              --filters Name=group-name,Values=$SECURITY_GROUP_NAME Name=vpc-id,Values=\$DEFAULT_VPC_ID \
+              --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null)
+
+            if [ -n "\$SG_ID" ] && [ "\$SG_ID" != "None" ]; then
+              echo "[🔥] Güvenlik grubu (\$SG_ID) siliniyor..."
+              aws ec2 delete-security-group --group-id \$SG_ID --region $REGION
+              echo "[✅] Güvenlik grubu başarıyla silindi."
+            else
+              echo "[ℹ️] Silinecek güvenlik grubu bulunamadı."
+            fi
+          """
+        }
+      }
+    }
+  }
+}
