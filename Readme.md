@@ -87,11 +87,14 @@ Manage Jenkins > Manage Plugins > Available sekmesinden yükleyebilirsiniz.
 
 🔑 Jenkins Credentials (Global → Add Credentials)
 
-|   Secret Adı	  |      Tür    	    |       Açıklama         |
-|   aws-creds	  |   AWS Credentials	|  AWS Erişim Bilgileri  |
-|  docker-creds	  |  Username/Password	|  DockerHub Hesabı      |
-|  github-auth	  |  Username/Password	|  GitHub PAT            |
 
+| 🔑 **Secret Adı** | 🔐 **Tür**        | 🔍 **Açıklama**              |
+| ----------------- | ----------------- | ---------------------------- |
+| **aws-creds**     | AWS Credentials   | AWS erişim bilgileri         |
+| **docker-creds**  | Username/Password | Docker Hub giriş bilgileri   |
+| **github-auth**   | Username/Password | GitHub Personal Access Token |
+
+---
 
 Credantials ekleme
 Dashboard > Manage Jenkins > Credentials > System > Global credentials bölümünden Add credentials butonuna tıklayarak Jenkinsfile'da tanımlanan credential'ları ekleyebilirsiniz
@@ -107,3 +110,21 @@ Dashboard > Manage Jenkins > Credentials > System > Global credentials bölümü
 - Image Docker Hub’a push edilir.
 
 - AWS EC2 üzerindeki sunucuda image çekilerek yayın yapılır.
+
+
+
+🧾 Sonuç
+Bu proje kapsamında, statik bir web uygulamasının otomatik olarak Docker imajına dönüştürülmesi, Docker Hub’a gönderilmesi ve Jenkins aracılığıyla AWS EC2 üzerinde yayınlanması sağlanmıştır. Tüm bu süreç; GitHub'a yapılan bir push işlemi ile tetiklenen CI/CD pipeline sayesinde tam otomatik şekilde gerçekleştirilmiştir.
+
+Jenkins pipeline şunları başarıyla gerçekleştirmektedir:
+
+🔧 Docker imajını build eder
+
+📦 Docker Hub’a push eder
+
+🧹 Eski EC2 makinelerini otomatik olarak temizler
+
+🚀 Yeni bir EC2 makinesi başlatır ve yayını gerçekleştirir
+
+Bu yapı sayesinde hem dinamik, temiz ve sürdürülebilir bir DevOps süreci elde edilmiş hem de kaynak yönetimi açısından verimli bir dağıtım altyapısı kurulmuştur.
+
