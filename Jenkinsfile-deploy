@@ -21,13 +21,36 @@ pipeline {
 
     stage('📦 Docker Hub’a Push Et') {
       steps {
-        withCredentials([
+        withCredentials([ 
           usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')
         ]) {
           echo "[🔐] Docker Hub’a giriş yapılıyor..."
           sh '''
             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
             docker push $IMAGE_NAME
+          '''
+        }
+      }
+    }
+
+    stage('🧹 Eski EC2’leri Temizle') {
+      steps {
+        withCredentials([
+          [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']
+        ]) {
+          echo "[🧹] Eski EC2 makineleri temizleniyor..."
+
+          sh '''
+            # Eski EC2'leri listele (TreepediaApp tag’ine sahip olanlar)
+            INSTANCE_IDS=$(aws ec2 describe-instances --region $REGION \
+              --filters "Name=tag:Name,Values=TreepediaApp" \
+              --query 'Reservations[*].Instances[*].InstanceId' --output text)
+
+            # Her eski instance'ı sil
+            for INSTANCE_ID in $INSTANCE_IDS; do
+              echo "[🛑] Eski EC2 instance siliniyor: $INSTANCE_ID"
+              aws ec2 terminate-instances --instance-ids $INSTANCE_ID --region $REGION
+            done
           '''
         }
       }
