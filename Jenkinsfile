@@ -20,15 +20,23 @@ pipeline {
           sh """
             echo "[🔐] AWS Credentials yüklendi."
 
-            echo "[🌐] VPC ID alınıyor..."
-            DEFAULT_VPC_ID=\$(aws ec2 describe-vpcs --region $REGION --filters Name=isDefault,Values=true --query 'Vpcs[0].VpcId' --output text)
-            echo "Default VPC: \$DEFAULT_VPC_ID"
+            echo "[🌐] Default VPC alınıyor..."
+            DEFAULT_VPC_ID=\$(aws ec2 describe-vpcs --region $REGION \
+              --filters Name=isDefault,Values=true \
+              --query 'Vpcs[0].VpcId' --output text)
 
-            echo "[🔍] Güvenlik grubu var mı diye bakılıyor..."
-            SG_ID=\$(aws ec2 describe-security-groups --region $REGION --filters Name=group-name,Values=$SECURITY_GROUP_NAME Name=vpc-id,Values=\$DEFAULT_VPC_ID --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null)
+            echo "🌐 Default VPC ID: \$DEFAULT_VPC_ID"
 
-            if [ -z "\$SG_ID" ] || [ "\$SG_ID" == "None" ]; then
-              echo "[🔧] Güvenlik grubu oluşturuluyor..."
+            echo "[🔍] Güvenlik grubu kontrol ediliyor..."
+            SG_ID=\$(aws ec2 describe-security-groups --region $REGION \
+              --filters Name=group-name,Values=$SECURITY_GROUP_NAME Name=vpc-id,Values=\$DEFAULT_VPC_ID \
+              --query 'SecurityGroups[0].GroupId' \
+              --output text 2>/dev/null)
+
+            echo "📦 Güvenlik Grubu ID: \$SG_ID"
+
+            if [ -z "\$SG_ID" ] || [ "\$SG_ID" = "None" ]; then
+              echo "[🛠️] Güvenlik grubu oluşturuluyor..."
               SG_ID=\$(aws ec2 create-security-group \
                 --group-name $SECURITY_GROUP_NAME \
                 --description "Allow HTTP and SSH" \
@@ -36,11 +44,11 @@ pipeline {
                 --region $REGION \
                 --query 'GroupId' --output text)
 
-              echo "[🔐] Kurallar ekleniyor..."
+              echo "[🔐] Erişim kuralları ekleniyor..."
               aws ec2 authorize-security-group-ingress --group-id \$SG_ID --protocol tcp --port 22 --cidr 0.0.0.0/0 --region $REGION
               aws ec2 authorize-security-group-ingress --group-id \$SG_ID --protocol tcp --port 80 --cidr 0.0.0.0/0 --region $REGION
             else
-              echo "[✅] Güvenlik grubu zaten var: \$SG_ID"
+              echo "[✅] Var olan güvenlik grubu kullanılacak: \$SG_ID"
             fi
 
             echo "[🚀] EC2 başlatılıyor..."
@@ -56,9 +64,9 @@ pipeline {
               --query 'Instances[0].InstanceId' \
               --output text)
 
-            echo "🔎 Instance ID: \$INSTANCE_ID"
+            echo "🆔 EC2 Instance ID: \$INSTANCE_ID"
 
-            echo "⏳ EC2 çalışır hale geliyor..."
+            echo "⏳ Bekleniyor, EC2 çalışmaya geçsin..."
             aws ec2 wait instance-running --instance-ids \$INSTANCE_ID --region $REGION
 
             PUBLIC_IP=\$(aws ec2 describe-instances \
@@ -67,7 +75,7 @@ pipeline {
               --query 'Reservations[0].Instances[0].PublicIpAddress' \
               --output text)
 
-            echo "✅ Treepedia yayında: http://\$PUBLIC_IP"
+            echo "🌍 Yayın başladı! Treepedia: http://\$PUBLIC_IP"
           """
         }
       }
